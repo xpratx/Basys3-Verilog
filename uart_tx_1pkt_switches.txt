@@ -1,0 +1,69 @@
+`timescale 1ns / 1ps
+
+
+// This program takes sends one packet of data(10 bits including start and stop)
+// and send transmits it to PC where it receives it with baud rate of 9600.
+// Data is being set on the board itself with the help of switches.
+// Used PuTTy for receiving the data on PC.
+
+
+module uart_tx(
+		input clk,
+		input start,
+		input[9:0] sw,
+		
+		output reg tx,
+		output reg busy
+		
+    );
+    
+    wire [9:0]data;
+    assign data = sw;
+    
+    parameter baud_rate = 9600;
+    parameter clk_freq = 100000000;
+    integer bit_index;
+    integer clk_count;
+    parameter clk_per_bit  = clk_freq / baud_rate;
+    
+    
+    reg [23:0] debounce = 0;
+    
+    wire btn_pressed = (debounce == 24'hFFFFFF);
+    
+    
+    always @(posedge clk) begin
+        if (start)
+            debounce <= debounce + 1;
+        else
+            debounce <= 0;
+    end
+    
+    always @(posedge clk)
+    begin
+    	if(btn_pressed && !busy)
+    	begin
+    		clk_count <= 0;
+    		busy <= 1;
+    		bit_index <= 0; 
+    		
+    	end
+    	
+    	else if (busy)
+    	begin
+    	
+    		if(clk_count == clk_per_bit -1)
+    			begin
+    				tx = data[bit_index];
+    				bit_index = bit_index + 1;
+    				clk_count = 0;
+    					if(bit_index == 10)
+    				    	busy <= 0;
+    			end
+    		else
+    			clk_count = clk_count +1;
+    	end
+    	
+    end
+    
+endmodule
